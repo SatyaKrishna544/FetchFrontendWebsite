@@ -1,0 +1,86 @@
+import { useState } from "react";
+import { View, TextInput, Button, Text, Alert } from "react-native";
+import { useRouter, Redirect } from "expo-router";
+import { useAuth } from "./auth";
+import React from "react";
+
+export default function LoginScreen() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { login } = useAuth();
+  const router = useRouter();
+
+  const handleLogin = async () => {
+    if (!name.trim() || !email.trim()) {
+      Alert.alert("Error", "Please fill in all fields");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await login(name, email);
+      
+      if (result) {
+        // Clear form fields
+        setName("");
+        setEmail("");
+        // Set logged in state instead of immediate navigation
+        setIsLoggedIn(true);
+      } else {
+        Alert.alert("Error", "Login failed. Please try again.");
+      }
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        error instanceof Error ? error.message : "An unexpected error occurred"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Use conditional rendering for navigation after successful login
+  if (isLoggedIn) {
+    return <Redirect href="/" />;
+  }
+
+  return (
+    <View style={{ padding: 20 }}>
+      <Text>Name:</Text>
+      <TextInput
+        style={{ 
+          borderWidth: 1, 
+          padding: 8, 
+          marginBottom: 10,
+          borderRadius: 4
+        }}
+        value={name}
+        onChangeText={setName}
+        editable={!isLoading}
+        placeholder="Enter your name"
+      />
+      <Text>Email:</Text>
+      <TextInput
+        style={{ 
+          borderWidth: 1, 
+          padding: 8, 
+          marginBottom: 10,
+          borderRadius: 4
+        }}
+        value={email}
+        onChangeText={setEmail}
+        editable={!isLoading}
+        placeholder="Enter your email"
+        keyboardType="email-address"
+        autoCapitalize="none"
+      />
+      <Button 
+        title={isLoading ? "Logging in..." : "Login"}
+        onPress={handleLogin}
+        disabled={isLoading}
+      />
+    </View>
+  );
+}
