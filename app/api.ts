@@ -130,3 +130,45 @@ export const matchDog = async (token: string, favoriteDogIds: string[]) => {
     return null;
   }
 };
+
+// Fetch locations by ZIP codes
+export async function fetchLocationsByZipCodes(zipCodes: string[]): Promise<Location[]> {
+  try {
+    const response = await fetch(`${API_BASE}/locations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(zipCodes),
+    });
+
+    if (!response.ok) throw new Error("Failed to fetch locations");
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching locations:", error);
+    return [];
+  }
+}
+
+// Search locations with filters
+export async function searchLocations(filters: {
+  city?: string;
+  states?: string[];
+  size?: number;
+  from?: number;
+}): Promise<{ results: Location[]; total: number }> {
+  try {
+    const response = await fetch(`${API_BASE}/locations/search`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(filters),
+    });
+
+    if (!response.ok) throw new Error("Failed to search locations");
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error searching locations:", error);
+    return { results: [], total: 0 };
+  }
+}
+

@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { useAuth } from "./auth";
 import { fetchBreeds, searchDogs, fetchDogDetails, matchDog } from "./api";
 import { SearchResponse, Dog } from "./types";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 
 const SORT_OPTIONS = [
@@ -97,11 +98,27 @@ export default function IndexPage() {
     performSearch(selectedBreed, 0, value);
   };
 
-  const toggleFavorite = (dogId: string) => {
-    setFavorites((prev) =>
-      prev.includes(dogId) ? prev.filter((id) => id !== dogId) : [...prev, dogId]
-    );
+  const toggleFavorite = async (dogId: string) => {
+    setFavorites((prev) => {
+      const updatedFavorites = prev.includes(dogId)
+        ? prev.filter((id) => id !== dogId)
+        : [...prev, dogId];
+  
+      AsyncStorage.setItem("favorites", JSON.stringify(updatedFavorites)); // Save to AsyncStorage
+      return updatedFavorites;
+    });
   };
+  
+
+  useEffect(() => {
+    const loadFavorites = async () => {
+      const storedFavorites = await AsyncStorage.getItem("favorites");
+      if (storedFavorites) {
+        setFavorites(JSON.parse(storedFavorites));
+      }
+    };
+    loadFavorites();
+  }, []);
 
   const handleMatch = async () => {
     if (favorites.length === 0) {
@@ -135,7 +152,10 @@ export default function IndexPage() {
             title={`Favorites (${favorites.length})`} 
             onPress={handleMatch}
           />
+          {/* <Button title="Logout" onPress={() => router.replace("/login")} /> */}
+          <Button title="Favorites" onPress={() => router.push("/favorites")} />
           <Button title="Logout" onPress={() => router.replace("/login")} />
+
         </View>
       </View>
 
