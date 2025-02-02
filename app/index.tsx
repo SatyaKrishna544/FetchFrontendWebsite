@@ -35,7 +35,6 @@ export default function IndexPage() {
   const [sortOption, setSortOption] = useState("breed:asc");
   const [showFavoriteMessage, setShowFavoriteMessage] = useState<string | null>(null);
   const [ageFilter, setAgeFilter] = useState<string>("all");
-  const [zipCodeFilter, setZipCodeFilter] = useState<string>("");
 
   useEffect(() => {
     const initializeData = async () => {
@@ -55,21 +54,6 @@ export default function IndexPage() {
       initializeData();
     }
   }, [isAuthenticated]);
-
-  const filterDogs = (dogs: Dog[]) => {
-    return dogs.filter(dog => {
-      if (ageFilter !== "all") {
-        const [min, max] = ageFilter.split("-").map(Number);
-        if (dog.age < min || dog.age > max) return false;
-      }
-      
-      if (zipCodeFilter && !dog.zip_code.startsWith(zipCodeFilter)) {
-        return false;
-      }
-      
-      return true;
-    });
-  };
 
   const performSearch = async (breed: string, from: number, sort: string) => {
     try {
@@ -126,9 +110,10 @@ export default function IndexPage() {
 
   return (
     <ScrollView style={styles.container}>
-      {/* Compact Header */}
+      {/* Cute Dog Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Happy Tails 🐾</Text>
+        <Text style={styles.title}>🐶 Welcome to Happy Tails!</Text>
+        <Text style={styles.subtitle}>Find your perfect furry friend ❤️</Text>
       </View>
 
       {/* Compact Controls */}
@@ -165,7 +150,7 @@ export default function IndexPage() {
           </View>
         </View>
 
-        {/* Second Row - Age and ZIP filters */}
+        {/* Second Row - Age filter */}
         <View style={styles.controlsRow}>
           <View style={styles.pickerContainer}>
             <Text style={styles.filterLabel}>Age Range:</Text>
@@ -206,7 +191,7 @@ export default function IndexPage() {
       {/* Loading State */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0066CC" />
+          <ActivityIndicator size="large" color="#6A4C93" />
         </View>
       ) : (
         <>
@@ -240,13 +225,6 @@ export default function IndexPage() {
                       {favorites.includes(dog.id) ? '♥' : '♡'}
                     </Text>
                   </TouchableOpacity>
-                  
-                  {/* Moved favorite message outside the TouchableOpacity */}
-                  {showFavoriteMessage === dog.id && (
-                    <View style={styles.favoriteMessage}>
-                      <Text style={styles.favoriteMessageText}>Marked favorite!</Text>
-                    </View>
-                  )}
                 </View>
               </View>
             ))}
@@ -281,31 +259,11 @@ export default function IndexPage() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: '#f5f5f5',
-  },
   header: {
     alignItems: 'center',
     marginBottom: 12,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  controls: {
-    backgroundColor: 'white',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
+  
   pickerContainer: {
     flex: 1,
     marginHorizontal: 4,
@@ -320,21 +278,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 8,
   },
-  button: {
-    backgroundColor: '#0066CC',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 6,
-    flex: 1,
-  },
   favoriteButton: {
     backgroundColor: '#FF3B70',
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
   },
   loadingContainer: {
     flex: 1,
@@ -480,4 +425,44 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 12,
   },
+
+  container: {
+    flex: 1,
+    backgroundColor: "#FAF3E0",
+    padding: 16,
+  },
+  
+  title: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#6A4C93",
+  },
+  subtitle: {
+    fontSize: 16,
+    color: "#6A4C93",
+    marginBottom: 15,
+  },
+  controls: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  button: {
+    marginTop: 10,
+    backgroundColor: "#6A4C93",
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  buttonText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+
 });
