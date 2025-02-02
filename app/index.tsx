@@ -9,18 +9,34 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScrollView } from "react-native-gesture-handler";
 import { useFocusEffect } from "expo-router";
 
-
-const SORT_OPTIONS = [
-  { label: "Breed (A-Z)", value: "breed:asc" },
-  { label: "Breed (Z-A)", value: "breed:desc" },
+const SORT_BY_NAME = [
   { label: "Name (A-Z)", value: "name:asc" },
   { label: "Name (Z-A)", value: "name:desc" },
 ];
 
-const PAGE_SIZE = 12; // Updated to show 15 cards per page
+const SORT_BY_BREED = [
+  { label: "Breed (A-Z)", value: "breed:asc" },
+  { label: "Breed (Z-A)", value: "breed:desc" },
+];
+
+const SORT_BY_ZIP = [
+  { label: "ZIP Code (0-9)", value: "zip_code:asc" },
+  { label: "ZIP Code (9-0)", value: "zip_code:desc" },
+];
+
+const AGE_RANGES = [
+  { label: "All Ages", value: "all" },
+  { label: "Puppies (0-1 year)", value: "0-1" },
+  { label: "Young (1-3 years)", value: "1-3" },
+  { label: "Adult (3-7 years)", value: "3-7" },
+  { label: "Senior (7+ years)", value: "7+" },
+];
+
+const DEFAULT_SORT = "breed:asc";
+const PAGE_SIZE = 15; // Updated to show 15 cards per page
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CARD_MARGIN = 8;
-const CARDS_PER_ROW = 4; // Updated to 5 cards per row
+const CARDS_PER_ROW = 5; // Updated to 5 cards per row
 const CARD_WIDTH = (SCREEN_WIDTH - 40 - (CARDS_PER_ROW * CARD_MARGIN * 2)) / CARDS_PER_ROW;
 
 export default function IndexPage() {
@@ -28,24 +44,24 @@ export default function IndexPage() {
   const router = useRouter();
 
   const [breeds, setBreeds] = useState<string[]>([]);
-  const [selectedBreed, setSelectedBreed] = useState<string>("");
+  const [selectedBreed, setSelectedBreed] = useState<string>("all");
   const [dogs, setDogs] = useState<Dog[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalDogs, setTotalDogs] = useState(0);
-  const [sortOption, setSortOption] = useState("breed:asc");
+  const [sortOption, setSortOption] = useState(DEFAULT_SORT);
   const [showFavoriteMessage, setShowFavoriteMessage] = useState<string | null>(null);
-  const [ageFilter, setAgeFilter] = useState<string>("all");
+  const [ageRange, setAgeRange] = useState<string>("all");
+
 
   useEffect(() => {
     const initializeData = async () => {
       try {
         setIsLoading(true);
         const breedList = await fetchBreeds("");
-        setBreeds(breedList);
-        setSelectedBreed(breedList[0] || "");
-        await performSearch(breedList[0] || "", 0, "breed:asc");
+        setBreeds(["all", ...breedList]);
+        await performSearch("", 0, DEFAULT_SORT);
       } catch (error) {
         Alert.alert("Error", "Failed to load initial data.");
       } finally {
@@ -61,14 +77,15 @@ export default function IndexPage() {
     try {
       setIsLoading(true);
       const searchResult = await searchDogs("", {
-        breed,
+        breed: breed === "all" ? "" : breed,
         size: PAGE_SIZE,
         sort,
         from: from.toString()
       });
       if (searchResult?.resultIds) {
         const dogDetails = await fetchDogDetails("", searchResult.resultIds);
-        setDogs(dogDetails || []);
+        const filteredDogs = filterByAge(dogDetails || [], ageRange);
+        setDogs(filteredDogs);
         setTotalDogs(searchResult.total);
         setCurrentPage(Math.floor(from / PAGE_SIZE));
       }
@@ -78,6 +95,7 @@ export default function IndexPage() {
       setIsLoading(false);
     }
   };
+
 
   const toggleFavorite = async (dogId: string) => {
     setFavorites((prev) => {
@@ -122,6 +140,17 @@ export default function IndexPage() {
     }, [])
   );
 
+  // Function to filter dogs by age range
+  const filterByAge = (dogs: Dog[], range: string) => {
+    if (range === "all") return dogs;
+    
+    const [min, max] = range.split("-").map(Number);
+    return dogs.filter(dog => {
+      const age = Number(dog.age);
+      if (range === "7+") return age >= 7;
+      return age >= min && age < max;
+    });
+  };
 
   return (
     <ScrollView style={styles.container}>
@@ -133,23 +162,32 @@ export default function IndexPage() {
 
       {/* Compact Controls */}
       <View style={styles.controls}>
-        {/* First Row - Breed and Sort */}
+
+        {/* Breed Filter */}
         <View style={styles.controlsRow}>
           <View style={styles.pickerContainer}>
             <Text style={styles.filterLabel}>Breed:</Text>
             <Picker
               selectedValue={selectedBreed}
-              onValueChange={setSelectedBreed}
+              onValueChange={(value) => {
+                setSelectedBreed(value);
+                performSearch(value, 0, sortOption);
+              }}
               style={styles.compactPicker}
             >
-              {breeds.map((breed) => (
+              <Picker.Item label="All Breeds" value="all" />
+              {breeds.filter(breed => breed !== "all").map((breed) => (
                 <Picker.Item key={breed} label={breed} value={breed} />
               ))}
             </Picker>
           </View>
+        </View>
 
+        {/* Sort Options */}
+        <View style={styles.controlsRow}>
+          {/* Name Sort */}
           <View style={styles.pickerContainer}>
-            <Text style={styles.filterLabel}>Sort by:</Text>
+            <Text style={styles.filterLabel}>Sort by Name:</Text>
             <Picker
               selectedValue={sortOption}
               onValueChange={(value) => {
@@ -158,27 +196,62 @@ export default function IndexPage() {
               }}
               style={styles.compactPicker}
             >
-              {SORT_OPTIONS.map((option) => (
+              {SORT_BY_NAME.map((option) => (
+                <Picker.Item key={option.value} label={option.label} value={option.value} />
+              ))}
+            </Picker>
+          </View>
+
+          {/* Breed Sort */}
+          <View style={styles.pickerContainer}>
+            <Text style={styles.filterLabel}>Sort by Breed:</Text>
+            <Picker
+              selectedValue={sortOption}
+              onValueChange={(value) => {
+                setSortOption(value);
+                performSearch(selectedBreed, 0, value);
+              }}
+              style={styles.compactPicker}
+            >
+              {SORT_BY_BREED.map((option) => (
+                <Picker.Item key={option.value} label={option.label} value={option.value} />
+              ))}
+            </Picker>
+          </View>
+
+          {/* ZIP Sort */}
+          <View style={styles.pickerContainer}>
+            <Text style={styles.filterLabel}>Sort by ZIP:</Text>
+            <Picker
+              selectedValue={sortOption}
+              onValueChange={(value) => {
+                setSortOption(value);
+                performSearch(selectedBreed, 0, value);
+              }}
+              style={styles.compactPicker}
+            >
+              {SORT_BY_ZIP.map((option) => (
                 <Picker.Item key={option.value} label={option.label} value={option.value} />
               ))}
             </Picker>
           </View>
         </View>
 
-        {/* Second Row - Age filter */}
+        {/* Age Range Filter */}
         <View style={styles.controlsRow}>
           <View style={styles.pickerContainer}>
             <Text style={styles.filterLabel}>Age Range:</Text>
             <Picker
-              selectedValue={ageFilter}
-              onValueChange={setAgeFilter}
+              selectedValue={ageRange}
+              onValueChange={(value) => {
+                setAgeRange(value);
+                performSearch(selectedBreed, 0, sortOption);
+              }}
               style={styles.compactPicker}
             >
-              <Picker.Item label="All Ages" value="all" />
-              <Picker.Item label="0-1 years" value="0-1" />
-              <Picker.Item label="1-3 years" value="1-3" />
-              <Picker.Item label="3-7 years" value="3-7" />
-              <Picker.Item label="7+ years" value="7-100" />
+              {AGE_RANGES.map((option) => (
+                <Picker.Item key={option.value} label={option.label} value={option.value} />
+              ))}
             </Picker>
           </View>
         </View>
