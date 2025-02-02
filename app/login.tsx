@@ -1,15 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { View, TextInput, Button, Text, Alert } from "react-native";
-import { useRouter, Redirect } from "expo-router";
+import { useRouter } from "expo-router"; // Use the correct router hook from expo-router
 import { useAuth } from "./auth";
-import React from "react";
 
 export default function LoginScreen() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const router = useRouter();
 
   const handleLogin = async () => {
@@ -26,8 +24,6 @@ export default function LoginScreen() {
         // Clear form fields
         setName("");
         setEmail("");
-        // Set logged in state instead of immediate navigation
-        setIsLoggedIn(true);
       } else {
         Alert.alert("Error", "Login failed. Please try again.");
       }
@@ -41,20 +37,22 @@ export default function LoginScreen() {
     }
   };
 
-  // Use conditional rendering for navigation after successful login
-  if (isLoggedIn) {
-    return <Redirect href="/" />;
-  }
+  // Redirect after login if the user is authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push("/"); // Redirect to home or desired path
+    }
+  }, [isAuthenticated, router]);
 
   return (
     <View style={{ padding: 20 }}>
       <Text>Name:</Text>
       <TextInput
-        style={{ 
-          borderWidth: 1, 
-          padding: 8, 
+        style={{
+          borderWidth: 1,
+          padding: 8,
           marginBottom: 10,
-          borderRadius: 4
+          borderRadius: 4,
         }}
         value={name}
         onChangeText={setName}
@@ -63,11 +61,11 @@ export default function LoginScreen() {
       />
       <Text>Email:</Text>
       <TextInput
-        style={{ 
-          borderWidth: 1, 
-          padding: 8, 
+        style={{
+          borderWidth: 1,
+          padding: 8,
           marginBottom: 10,
-          borderRadius: 4
+          borderRadius: 4,
         }}
         value={email}
         onChangeText={setEmail}
@@ -76,7 +74,7 @@ export default function LoginScreen() {
         keyboardType="email-address"
         autoCapitalize="none"
       />
-      <Button 
+      <Button
         title={isLoading ? "Logging in..." : "Login"}
         onPress={handleLogin}
         disabled={isLoading}

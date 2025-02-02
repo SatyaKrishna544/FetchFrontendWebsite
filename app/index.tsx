@@ -1,21 +1,25 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Button, FlatList, Image, Alert, ActivityIndicator, TouchableOpacity } from "react-native";
+import { View, Text, Image, Alert, ActivityIndicator, TouchableOpacity, StyleSheet, Dimensions, TextInput } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
 import { useAuth } from "./auth";
-import { fetchBreeds, searchDogs, fetchDogDetails, matchDog } from "./api";
-import { SearchResponse, Dog } from "./types";
+import { fetchBreeds, searchDogs, fetchDogDetails } from "./api";
+import { Dog } from "./types";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
+import { ScrollView } from "react-native-gesture-handler";
 
 const SORT_OPTIONS = [
   { label: "Breed (A-Z)", value: "breed:asc" },
   { label: "Breed (Z-A)", value: "breed:desc" },
   { label: "Name (A-Z)", value: "name:asc" },
-  { label: "Name (Z-A)", value: "name:desc" }
+  { label: "Name (Z-A)", value: "name:desc" },
 ];
 
-const PAGE_SIZE = 25; // Match API default size
+const PAGE_SIZE = 12; // Updated to show 15 cards per page
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const CARD_MARGIN = 8;
+const CARDS_PER_ROW = 4; // Updated to 5 cards per row
+const CARD_WIDTH = (SCREEN_WIDTH - 40 - (CARDS_PER_ROW * CARD_MARGIN * 2)) / CARDS_PER_ROW;
 
 export default function IndexPage() {
   const { isAuthenticated } = useAuth();
@@ -29,32 +33,43 @@ export default function IndexPage() {
   const [currentPage, setCurrentPage] = useState(0);
   const [totalDogs, setTotalDogs] = useState(0);
   const [sortOption, setSortOption] = useState("breed:asc");
+  const [showFavoriteMessage, setShowFavoriteMessage] = useState<string | null>(null);
+  const [ageFilter, setAgeFilter] = useState<string>("all");
+  const [zipCodeFilter, setZipCodeFilter] = useState<string>("");
 
-  // Fetch breeds and initial dogs on mount
   useEffect(() => {
     const initializeData = async () => {
       try {
         setIsLoading(true);
         const breedList = await fetchBreeds("");
-        if (breedList.length > 0) {
-          setBreeds(breedList);
-          setSelectedBreed(breedList[0]);
-          await performSearch(breedList[0], 0, "breed:asc");
-        }
+        setBreeds(breedList);
+        setSelectedBreed(breedList[0] || "");
+        await performSearch(breedList[0] || "", 0, "breed:asc");
       } catch (error) {
-        Alert.alert(
-          "Error",
-          "Failed to load initial data. Please try again."
-        );
+        Alert.alert("Error", "Failed to load initial data.");
       } finally {
         setIsLoading(false);
       }
     };
-
     if (isAuthenticated) {
       initializeData();
     }
   }, [isAuthenticated]);
+
+  const filterDogs = (dogs: Dog[]) => {
+    return dogs.filter(dog => {
+      if (ageFilter !== "all") {
+        const [min, max] = ageFilter.split("-").map(Number);
+        if (dog.age < min || dog.age > max) return false;
+      }
+      
+      if (zipCodeFilter && !dog.zip_code.startsWith(zipCodeFilter)) {
+        return false;
+      }
+      
+      return true;
+    });
+  };
 
   const performSearch = async (breed: string, from: number, sort: string) => {
     try {
@@ -65,50 +80,37 @@ export default function IndexPage() {
         sort,
         from: from.toString()
       });
-
       if (searchResult?.resultIds) {
         const dogDetails = await fetchDogDetails("", searchResult.resultIds);
-        if (Array.isArray(dogDetails)) {
-          setDogs(dogDetails);
-          setTotalDogs(searchResult.total);
-        }
+        setDogs(dogDetails || []);
+        setTotalDogs(searchResult.total);
+        setCurrentPage(Math.floor(from / PAGE_SIZE));
       }
     } catch (error) {
-      Alert.alert("Error", "Failed to search dogs. Please try again.");
+      Alert.alert("Error", "Failed to search dogs.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSearch = () => {
-    if (!selectedBreed) return;
-    setCurrentPage(0);
-    performSearch(selectedBreed, 0, sortOption);
-  };
-
-  const handlePageChange = (newPage: number) => {
-    setCurrentPage(newPage);
-    const from = newPage * PAGE_SIZE;
-    performSearch(selectedBreed, from, sortOption);
-  };
-
-  const handleSortChange = (value: string) => {
-    setSortOption(value);
-    setCurrentPage(0);
-    performSearch(selectedBreed, 0, value);
-  };
-
   const toggleFavorite = async (dogId: string) => {
     setFavorites((prev) => {
-      const updatedFavorites = prev.includes(dogId)
+      const isFavorite = prev.includes(dogId);
+      const updatedFavorites = isFavorite
         ? prev.filter((id) => id !== dogId)
         : [...prev, dogId];
-  
-      AsyncStorage.setItem("favorites", JSON.stringify(updatedFavorites)); // Save to AsyncStorage
+      
+      AsyncStorage.setItem("favorites", JSON.stringify(updatedFavorites));
+      
+      // Show/hide favorite message
+      setShowFavoriteMessage(isFavorite ? null : dogId);
+      if (!isFavorite) {
+        setTimeout(() => setShowFavoriteMessage(null), 2000); // Hide after 2 seconds
+      }
+      
       return updatedFavorites;
     });
   };
-  
 
   useEffect(() => {
     const loadFavorites = async () => {
@@ -120,148 +122,362 @@ export default function IndexPage() {
     loadFavorites();
   }, []);
 
-  const handleMatch = async () => {
-    if (favorites.length === 0) {
-      Alert.alert("No Favorites", "Please select some favorite dogs first!");
-      return;
-    }
-
-    try {
-      const match = await matchDog("", favorites);
-      if (match?.match) {
-        Alert.alert("Match Found!", `You matched with a dog! ID: ${match.match}`);
-      }
-    } catch (error) {
-      Alert.alert("Error", "Failed to find a match. Please try again.");
-    }
-  };
-
-  if (!isAuthenticated) {
-    router.replace("/login");
-    return null;
-  }
-
   const totalPages = Math.ceil(totalDogs / PAGE_SIZE);
 
   return (
-    <View style={{ flex: 1, padding: 20 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <Text style={{ fontSize: 24, fontWeight: 'bold' }}>Browse Dogs</Text>
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <Button 
-            title={`Favorites (${favorites.length})`} 
-            onPress={handleMatch}
-          />
-          {/* <Button title="Logout" onPress={() => router.replace("/login")} /> */}
-          <Button title="Favorites" onPress={() => router.push("/favorites")} />
-          <Button title="Logout" onPress={() => router.replace("/login")} />
-
-        </View>
+    <ScrollView style={styles.container}>
+      {/* Compact Header */}
+      <View style={styles.header}>
+        <Text style={styles.title}>Happy Tails 🐾</Text>
       </View>
 
-      {/* Filters Section */}
-      <View style={{ marginBottom: 20 }}>
-        <Text style={{ marginBottom: 5 }}>Breed:</Text>
-        <Picker
-          selectedValue={selectedBreed}
-          onValueChange={setSelectedBreed}
-          enabled={!isLoading}
-          style={{ marginBottom: 10 }}
-        >
-          <Picker.Item label="Select a breed" value="" />
-          {breeds.map((breed) => (
-            <Picker.Item key={breed} label={breed} value={breed} />
-          ))}
-        </Picker>
+      {/* Compact Controls */}
+      <View style={styles.controls}>
+        {/* First Row - Breed and Sort */}
+        <View style={styles.controlsRow}>
+          <View style={styles.pickerContainer}>
+            <Text style={styles.filterLabel}>Breed:</Text>
+            <Picker
+              selectedValue={selectedBreed}
+              onValueChange={setSelectedBreed}
+              style={styles.compactPicker}
+            >
+              {breeds.map((breed) => (
+                <Picker.Item key={breed} label={breed} value={breed} />
+              ))}
+            </Picker>
+          </View>
 
-        <Text style={{ marginBottom: 5 }}>Sort by:</Text>
-        <Picker
-          selectedValue={sortOption}
-          onValueChange={handleSortChange}
-          enabled={!isLoading}
-          style={{ marginBottom: 10 }}
-        >
-          {SORT_OPTIONS.map((option) => (
-            <Picker.Item key={option.value} label={option.label} value={option.value} />
-          ))}
-        </Picker>
+          <View style={styles.pickerContainer}>
+            <Text style={styles.filterLabel}>Sort by:</Text>
+            <Picker
+              selectedValue={sortOption}
+              onValueChange={(value) => {
+                setSortOption(value);
+                performSearch(selectedBreed, 0, value);
+              }}
+              style={styles.compactPicker}
+            >
+              {SORT_OPTIONS.map((option) => (
+                <Picker.Item key={option.value} label={option.label} value={option.value} />
+              ))}
+            </Picker>
+          </View>
+        </View>
 
-        <Button 
-          title="Search" 
-          onPress={handleSearch} 
-          disabled={isLoading || !selectedBreed}
-        />
+        {/* Second Row - Age and ZIP filters */}
+        <View style={styles.controlsRow}>
+          <View style={styles.pickerContainer}>
+            <Text style={styles.filterLabel}>Age Range:</Text>
+            <Picker
+              selectedValue={ageFilter}
+              onValueChange={setAgeFilter}
+              style={styles.compactPicker}
+            >
+              <Picker.Item label="All Ages" value="all" />
+              <Picker.Item label="0-1 years" value="0-1" />
+              <Picker.Item label="1-3 years" value="1-3" />
+              <Picker.Item label="3-7 years" value="3-7" />
+              <Picker.Item label="7+ years" value="7-100" />
+            </Picker>
+          </View>
+        </View>
+
+        {/* Third Row - Buttons */}
+        <View style={styles.buttonGroup}>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => performSearch(selectedBreed, 0, sortOption)}
+          >
+            <Text style={styles.buttonText}>Search</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.button, styles.favoriteButton]}
+            onPress={() => router.push("/favorites")}
+          >
+            <Text style={styles.buttonText}>
+              Favorites ({favorites.length})
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Loading State */}
-      {isLoading && (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" />
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0066CC" />
         </View>
-      )}
-
-      {/* Dog List */}
-      {!isLoading && (
+      ) : (
         <>
-          <FlatList
-            data={dogs}
-            keyExtractor={(dog) => dog.id}
-            renderItem={({ item: dog }) => (
-              <View 
-                style={{ 
-                  marginBottom: 20, 
-                  padding: 10, 
-                  borderRadius: 8,
-                  backgroundColor: '#f5f5f5'
-                }}
-              >
-                <Image 
-                  source={{ uri: dog.img }} 
-                  style={{ 
-                    width: '100%', 
-                    height: 200, 
-                    borderRadius: 8,
-                    marginBottom: 10
-                  }} 
+          {/* Dog Grid */}
+          <View style={styles.gridContainer}>
+            {dogs.map((dog) => (
+              <View key={dog.id} style={styles.card}>
+                <Image
+                  source={{ uri: dog.img }}
+                  style={styles.dogImage}
+                  resizeMode="cover"
                 />
-                <Text style={{ fontSize: 18, fontWeight: 'bold' }}>
-                  {dog.name} - {dog.breed}
-                </Text>
-                <Text>Age: {dog.age} years</Text>
-                <Text>Location: {dog.zip_code}</Text>
-                
-                <Button
-                  title={favorites.includes(dog.id) ? "♥ Favorited" : "♡ Add to Favorites"}
-                  onPress={() => toggleFavorite(dog.id)}
-                />
+                <View style={styles.cardContent}>
+                  <Text style={styles.dogName}>{dog.name}</Text>
+                  <Text style={styles.dogBreed}>{dog.breed}</Text>
+                  <View style={styles.dogInfoContainer}>
+                    <Text style={styles.dogInfo}>Age: {dog.age} years</Text>
+                    <Text style={styles.dogInfo}>ZIP: {dog.zip_code}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[
+                      styles.favoriteToggle,
+                      favorites.includes(dog.id) && styles.favoriteToggleActive
+                    ]}
+                    onPress={() => toggleFavorite(dog.id)}
+                  >
+                    <Text style={[
+                      styles.favoriteToggleText,
+                      favorites.includes(dog.id) && styles.favoriteToggleTextActive
+                    ]}>
+                      {favorites.includes(dog.id) ? '♥' : '♡'}
+                    </Text>
+                  </TouchableOpacity>
+                  
+                  {/* Moved favorite message outside the TouchableOpacity */}
+                  {showFavoriteMessage === dog.id && (
+                    <View style={styles.favoriteMessage}>
+                      <Text style={styles.favoriteMessageText}>Marked favorite!</Text>
+                    </View>
+                  )}
+                </View>
               </View>
-            )}
-            contentContainerStyle={{ paddingBottom: 20 }}
-          />
+            ))}
+          </View>
 
-          {/* Pagination Controls */}
-          <View style={{ 
-            flexDirection: 'row', 
-            justifyContent: 'space-between', 
-            alignItems: 'center',
-            paddingVertical: 10 
-          }}>
-            <Button
-              title="Previous"
-              onPress={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 0 || isLoading}
-            />
-            <Text>
+          {/* Pagination */}
+          <View style={styles.pagination}>
+            <TouchableOpacity
+              style={[styles.pageButton, currentPage === 0 && styles.pageButtonDisabled]}
+              onPress={() => performSearch(selectedBreed, (currentPage - 1) * PAGE_SIZE, sortOption)}
+              disabled={currentPage === 0}
+            >
+              <Text style={styles.pageButtonText}>Previous</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.pageText}>
               Page {currentPage + 1} of {totalPages}
             </Text>
-            <Button
-              title="Next"
-              onPress={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages - 1 || isLoading}
-            />
+
+            <TouchableOpacity
+              style={[styles.pageButton, currentPage >= totalPages - 1 && styles.pageButtonDisabled]}
+              onPress={() => performSearch(selectedBreed, (currentPage + 1) * PAGE_SIZE, sortOption)}
+              disabled={currentPage >= totalPages - 1}
+            >
+              <Text style={styles.pageButtonText}>Next</Text>
+            </TouchableOpacity>
           </View>
         </>
       )}
-    </View>
+    </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: '#f5f5f5',
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  controls: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  pickerContainer: {
+    flex: 1,
+    marginHorizontal: 4,
+  },
+  compactPicker: {
+    height: 36,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 4,
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  button: {
+    backgroundColor: '#0066CC',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    flex: 1,
+  },
+  favoriteButton: {
+    backgroundColor: '#FF3B70',
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    marginHorizontal: -CARD_MARGIN,
+  },
+  card: {
+    width: CARD_WIDTH,
+    margin: CARD_MARGIN,
+    backgroundColor: 'white',
+    borderRadius: 8,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  dogImage: {
+    width: '100%',
+    height: CARD_WIDTH * 0.75,
+    backgroundColor: '#f0f0f0',
+  },
+  cardContent: {
+    padding: 8,
+    position: 'relative',
+  },
+  dogName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 2,
+  },
+  dogBreed: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
+  },
+  dogInfoContainer: {
+    marginBottom: 8,
+  },
+  dogInfo: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 2,
+  },
+  favoriteToggle: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    padding: 6,
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  favoriteToggleActive: {
+    backgroundColor: '#FFE5EC',
+  },
+  favoriteToggleText: {
+    color: '#666',
+    fontSize: 14,
+    fontWeight: '500',
+    lineHeight: 14,
+  },
+  favoriteToggleTextActive: {
+    color: '#FF3B70',
+  },
+  pagination: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 16,
+    gap: 12,
+  },
+  pageButton: {
+    backgroundColor: '#0066CC',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+  },
+  pageButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
+  pageButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  pageText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  filterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  filterContainer: {
+    flex: 1,
+    marginHorizontal: 4,
+  },
+  zipInput: {
+    height: 36,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  favoriteMessage: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -50 }, { translateY: -50 }],
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 8,
+    borderRadius: 4,
+    zIndex: 1000,
+  },
+  favoriteMessageText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  filterLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 4,
+    color: '#444',
+  },
+  controlsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+});

@@ -11,5 +11,22 @@ export interface Dog {
   breed: string;
   age: number;
   zip_code: string;
-  // Add any other fields that the API returns
+}
+
+export interface Match {
+  match: string
+}
+
+export interface Location {
+  zip_code: string
+  latitude: number
+  longitude: number
+  city: string
+  state: string
+  county: string
+}
+
+export interface Coordinates {
+  lat: number;
+  lon: number;
 }

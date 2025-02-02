@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState } from 'react';
-import { loginUser, logoutUser } from './api';
+import React, { createContext, useContext, useState } from "react";
+import { loginUser, logoutUser } from "./api";
+import AsyncStorage from "@react-native-async-storage/async-storage"; // Ensure AsyncStorage is imported
 
 interface AuthContextType {
   token: string | null;
@@ -15,11 +16,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (name: string, email: string): Promise<boolean> => {
     try {
-      await loginUser(name, email);
-      setToken('authenticated');
-      return true;
+      const response = await loginUser(name, email);
+      if (response && response.success) {
+        setToken("authenticated"); // Replace with actual token if returned
+        return true;
+      }
+      return false;
     } catch (error) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
       return false;
     }
   };
@@ -27,9 +31,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async (): Promise<void> => {
     try {
       await logoutUser();
-      setToken(null);
+      setToken(null); // Clear the authentication state
+
+      // Clear stored favorites or any other data from AsyncStorage
+      await AsyncStorage.removeItem("favorites"); // Clear favorites data on logout
+      await AsyncStorage.removeItem("userData"); // Optionally clear user data (if any)
+
+      // Optional: If you want to clear all AsyncStorage data, you can do:
+      // await AsyncStorage.clear();
+
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
       throw error;
     }
   };
@@ -38,20 +50,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     token,
     login,
     logout,
-    isAuthenticated: !!token
+    isAuthenticated: !!token,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 }
