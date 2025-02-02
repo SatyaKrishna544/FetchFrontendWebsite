@@ -7,6 +7,8 @@ import { fetchBreeds, searchDogs, fetchDogDetails } from "./api";
 import { Dog } from "./types";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScrollView } from "react-native-gesture-handler";
+import { useFocusEffect } from "expo-router";
+
 
 const SORT_OPTIONS = [
   { label: "Breed (A-Z)", value: "breed:asc" },
@@ -107,6 +109,19 @@ export default function IndexPage() {
   }, []);
 
   const totalPages = Math.ceil(totalDogs / PAGE_SIZE);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const loadFavorites = async () => {
+        const storedFavorites = await AsyncStorage.getItem("favorites");
+        if (storedFavorites) {
+          setFavorites(JSON.parse(storedFavorites));
+        }
+      };
+      loadFavorites();
+    }, [])
+  );
+
 
   return (
     <ScrollView style={styles.container}>
