@@ -311,13 +311,13 @@ const styles = StyleSheet.create({
     marginHorizontal: 3, 
     borderRadius: 5, 
     backgroundColor: "#ddd" 
-  },
+},
   currentPage: { 
     backgroundColor: "#007AFF" 
-  },
+},
   pageNumberText: { 
     fontSize: 16, 
     fontWeight: "bold", 
     color: "#fff" 
-  },
+},
 });

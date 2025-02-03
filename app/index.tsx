@@ -45,7 +45,7 @@ const CARD_WIDTH = (SCREEN_WIDTH - 40 - (CARDS_PER_ROW * CARD_MARGIN * 2)) / CAR
 export default function IndexPage() {
   const { isAuthenticated, logout } = useAuth();
   const router = useRouter();
-
+  
   const [breeds, setBreeds] = useState<string[]>([]);
   const [selectedBreed, setSelectedBreed] = useState<string>("all");
   const [dogs, setDogs] = useState<Dog[]>([]);
@@ -295,7 +295,7 @@ export default function IndexPage() {
             onPress={() => router.push("/favorites")}
           >
             <Text style={styles.buttonText}>
-              Favorites ({favorites.length})
+              View Favorites ({favorites.length})
             </Text>
           </TouchableOpacity>
         </View>
