@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { View, TextInput, Image, Alert, Animated, StyleSheet } from "react-native";
+import { View, Image, Alert, Animated, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "../providers/auth";
-import { Button, Text } from "react-native-paper";
+import { Button, Text, TextInput, HelperText } from "react-native-paper";
 
 export default function LoginScreen() {
-
   const { login, isAuthenticated } = useAuth();
   const router = useRouter();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [nameError, setNameError] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const fadeAnim = new Animated.Value(0);
 
@@ -23,35 +24,55 @@ export default function LoginScreen() {
   }, []);
 
   useEffect(() => {
-    console.log('Auth state changed:', isAuthenticated);
     if (isAuthenticated) {
-      console.log('Authenticated, attempting navigation');
       router.replace("/");
     }
   }, [isAuthenticated]);
 
+  const validateInputs = () => {
+    let isValid = true;
+
+    // Name validation
+    if (!name.trim()) {
+      setNameError("Name is required");
+      isValid = false;
+    } else if (name.trim().length < 2) {
+      setNameError("Name must be at least 2 characters");
+      isValid = false;
+    } else {
+      setNameError("");
+    }
+
+    // Email validation
+    if (!email.trim()) {
+      setEmailError("Email is required");
+      isValid = false;
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      setEmailError("Please enter a valid email address");
+      isValid = false;
+    } else {
+      setEmailError("");
+    }
+
+    return isValid;
+  };
+
   const handleLogin = async () => {
-    console.log('Starting login process');
-    if (!name.trim() || !email.trim()) {
-      Alert.alert("Error", "Please fill in all fields");
+    if (!validateInputs()) {
       return;
     }
 
     setIsLoading(true);
     try {
       const success = await login(name, email);
-      console.log('Login result:', success);
       if (success) {
-        console.log('Login successful, attempting navigation');
         setName("");
         setEmail("");
-        // Force navigation to home
         router.replace("/");
       } else {
         Alert.alert("Error", "Login failed. Please try again.");
       }
     } catch (error) {
-      console.error('Login error:', error);
       Alert.alert(
         "Error",
         error instanceof Error ? error.message : "An unexpected error occurred"
@@ -63,7 +84,7 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.header]}>
+      <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
         <Image
           source={{
             uri: "https://images.unsplash.com/photo-1560807707-8cc77767d783",
@@ -75,30 +96,51 @@ export default function LoginScreen() {
       </Animated.View>
 
       <View style={styles.loginBox}>
+        <Text style={styles.inputLabel}>Name:</Text>
         <TextInput
-          style={styles.input}
+          mode="outlined"
           value={name}
-          onChangeText={setName}
-          editable={!isLoading}
+          onChangeText={(text) => {
+            setName(text);
+            if (nameError) validateInputs();
+          }}
+          disabled={isLoading}
           placeholder="Enter your name"
-          placeholderTextColor="#aaa"
-        />
-        <TextInput
+          error={!!nameError}
+          outlineStyle={styles.inputOutline}
           style={styles.input}
+        />
+        <HelperText type="error" visible={!!nameError}>
+          {nameError}
+        </HelperText>
+
+        <Text style={styles.inputLabel}>Email:</Text>
+        <TextInput
+          mode="outlined"
           value={email}
-          onChangeText={setEmail}
-          editable={!isLoading}
+          onChangeText={(text) => {
+            setEmail(text);
+            if (emailError) validateInputs();
+          }}
+          disabled={isLoading}
           placeholder="Enter your email"
-          placeholderTextColor="#aaa"
           keyboardType="email-address"
           autoCapitalize="none"
+          error={!!emailError}
+          outlineStyle={styles.inputOutline}
+          style={styles.input}
         />
+        <HelperText type="error" visible={!!emailError}>
+          {emailError}
+        </HelperText>
+
         <Button
           mode="contained"
           onPress={handleLogin}
           loading={isLoading}
           disabled={isLoading}
           style={styles.button}
+          contentStyle={styles.buttonContent}
         >
           {isLoading ? "Logging in..." : "Login"}
         </Button>
@@ -117,28 +159,29 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 30,
   },
   logo: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    marginBottom: 10,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    marginBottom: 20,
   },
   title: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: "700",
     color: "#6A4C93",
+    marginBottom: 8,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 18,
     color: "#6A4C93",
     marginBottom: 15,
   },
   loginBox: {
     width: "40%",
     backgroundColor: "#fff",
-    padding: 20,
+    padding: 24,
     borderRadius: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
@@ -146,17 +189,25 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 8,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    padding: 12,
-    marginBottom: 10,
-    borderRadius: 6,
+  inputLabel: {
     fontSize: 16,
-    backgroundColor: "#F9F9F9",
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 4,
+  },
+  input: {
+    backgroundColor: "#fff",
+    fontSize: 16,
+  },
+  inputOutline: {
+    borderRadius: 6,
   },
   button: {
-    marginTop: 10,
+    marginTop: 16,
     backgroundColor: "#6A4C93",
+    borderRadius: 8,
+  },
+  buttonContent: {
+    paddingVertical: 8,
   },
 });
