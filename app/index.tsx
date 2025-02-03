@@ -8,8 +8,9 @@ import { FilterControls } from './components/FilterControls';
 import { Pagination } from './components/Pagination';
 import { useDogSearch } from './hooks/useDogSearch';
 import { useFavorites } from './hooks/useFavorites';
-import { PAGE_SIZE } from './constants';
+import { CARD_WIDTH, PAGE_SIZE } from './constants';
 import { fetchBreeds } from './api';
+import { Dog } from './types';
 
 export default function IndexPage() {
   const { isAuthenticated, logout } = useAuth();
@@ -122,15 +123,16 @@ export default function IndexPage() {
           {/* Dog Grid */}
           {dogs.length > 0 ? (
             <View style={styles.gridContainer}>
-              {dogs.map((dog) => (
-                <DogCard
-                  key={dog.id}
-                  dog={dog}
-                  isFavorite={favorites.includes(dog.id)}
-                  onToggleFavorite={toggleFavorite}
-                />
-              ))}
-            </View>
+            {dogs.map((dog: Dog) => (  // Add ': Dog' here
+              <DogCard
+                key={dog.id}
+                dog={dog}
+                isFavorite={favorites.includes(dog.id)}
+                onToggleFavorite={toggleFavorite}
+                cardWidth={CARD_WIDTH}
+              />
+            ))}
+          </View>
           ) : (
             <View style={styles.noDogsContainer}>
               <Text style={styles.noDogsText}>No dogs found matching your criteria.</Text>

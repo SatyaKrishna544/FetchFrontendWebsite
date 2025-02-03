@@ -63,7 +63,7 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
+      <Animated.View style={[styles.header]}>
         <Image
           source={{
             uri: "https://images.unsplash.com/photo-1560807707-8cc77767d783",

@@ -1,63 +1,120 @@
-import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+// 📁 app/components/DogCard.tsx
+import React, { useState } from 'react';
+import { View, StyleSheet, Animated } from 'react-native';
+import { Card, Text, Button, IconButton } from 'react-native-paper';
 import { Dog } from '../types';
+import { DogDetailModal } from './DogDetailModal';
 
 interface DogCardProps {
   dog: Dog;
   isFavorite: boolean;
   onToggleFavorite: (dogId: string) => void;
+  cardWidth: number;
+  showRemoveButton?: boolean; // New prop to control button visibility
 }
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const CARD_MARGIN = 8;
-const CARDS_PER_ROW = 5; // Updated to 5 cards per row
-const CARD_WIDTH = (SCREEN_WIDTH - 40 - (CARDS_PER_ROW * CARD_MARGIN * 2)) / CARDS_PER_ROW;
+export const DogCard: React.FC<DogCardProps> = ({
+  dog,
+  isFavorite,
+  onToggleFavorite,
+  cardWidth,
+  showRemoveButton = false, // Default to false for home page
+}) => {
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [scaleAnim] = useState(new Animated.Value(1));
 
-export const DogCard: React.FC<DogCardProps> = ({ dog, isFavorite, onToggleFavorite }) => {
+  const handleFavoritePress = () => {
+    // Animate heart icon when pressed
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 1.3,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    onToggleFavorite(dog.id);
+  };
+
   return (
-    <View style={styles.card}>
-      <Image source={{ uri: dog.img }} style={styles.dogImage} resizeMode="cover" />
-      <View style={styles.cardContent}>
-        <Text style={styles.dogName}>{dog.name}</Text>
-        <Text style={styles.dogBreed}>{dog.breed}</Text>
-        <View style={styles.dogInfoContainer}>
-          <Text style={styles.dogInfo}>Age: {dog.age} years</Text>
-          <Text style={styles.dogInfo}>ZIP: {dog.zip_code}</Text>
-        </View>
-        <TouchableOpacity
-          style={[styles.favoriteToggle, isFavorite && styles.favoriteToggleActive]}
-          onPress={() => onToggleFavorite(dog.id)}
-        >
-          <Text style={[styles.favoriteToggleText, isFavorite && styles.favoriteToggleTextActive]}>
-            {isFavorite ? '♥' : '♡'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+    <>
+      <Card style={[styles.card, { width: cardWidth }]}>
+        <Card.Cover source={{ uri: dog.img }} style={styles.dogImage} />
+        <Card.Content style={styles.cardContent}>
+          <View style={styles.detailsContainer}>
+            <Text style={styles.dogName}>{dog.name}</Text>
+            <Text style={styles.dogBreed}>{dog.breed}</Text>
+            <View style={styles.infoRow}>
+              <Text style={styles.dogInfo}>Age: {dog.age}</Text>
+              <Text style={styles.dogInfo}>ZIP: {dog.zip_code}</Text>
+            </View>
+          </View>
+          
+          <View style={styles.buttonContainer}>
+            <Button
+              mode="outlined"
+              onPress={() => setIsModalVisible(true)}
+              style={styles.viewButton}
+              labelStyle={styles.viewButtonLabel}
+              compact={true} // Make the button smaller
+            >
+              View Details
+            </Button>
+            {showRemoveButton ? (
+              <Button
+                mode="contained"
+                onPress={() => onToggleFavorite(dog.id)}
+                style={styles.removeButton}
+              >
+                Remove
+              </Button>
+            ) : (
+              <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+                <IconButton
+                  icon={isFavorite ? "heart" : "heart-outline"}
+                  size={24}
+                  iconColor={isFavorite ? "#FF3B70" : "#666"}
+                  onPress={handleFavoritePress}
+                  style={styles.heartButton}
+                />
+              </Animated.View>
+            )}
+          </View>
+        </Card.Content>
+      </Card>
+
+      <DogDetailModal
+        visible={isModalVisible}
+        onClose={() => setIsModalVisible(false)}
+        dog={dog}
+      />
+    </>
   );
 };
 
 const styles = StyleSheet.create({
-card: {
-    width: CARD_WIDTH,
-    margin: CARD_MARGIN,
+  card: {
+    margin: 8,
     backgroundColor: 'white',
     borderRadius: 8,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
     elevation: 2,
   },
   dogImage: {
-    width: '100%',
-    height: CARD_WIDTH * 0.75,
-    backgroundColor: '#f0f0f0',
+    height: 150,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
   },
   cardContent: {
-    padding: 8,
-    position: 'relative',
+    padding: 12,
+  },
+  detailsContainer: {
+    alignItems: 'center',
+    marginBottom: 8,
   },
   dogName: {
     fontSize: 16,
@@ -66,40 +123,38 @@ card: {
     marginBottom: 2,
   },
   dogBreed: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#666',
     marginBottom: 4,
   },
-  dogInfoContainer: {
-    marginBottom: 8,
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
   },
   dogInfo: {
     fontSize: 12,
     color: '#666',
-    marginBottom: 2,
   },
-  favoriteToggle: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    padding: 6,
-    borderRadius: 12,
-    width: 24,
-    height: 24,
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
+    marginTop: 8,
   },
-  favoriteToggleActive: {
-    backgroundColor: '#FFE5EC',
+  viewButton: {
+    borderColor: '#6A4C93',
+    height: 36,
   },
-  favoriteToggleText: {
-    color: '#666',
-    fontSize: 14,
-    fontWeight: '500',
-    lineHeight: 14,
+  viewButtonLabel: {
+    color: '#6A4C93',
+    fontSize: 12,
   },
-  favoriteToggleTextActive: {
-    color: '#FF3B70',
+  removeButton: {
+    backgroundColor: '#FF3B70',
+  },
+  heartButton: {
+    margin: 0,
+    marginRight: -8,
   },
 });

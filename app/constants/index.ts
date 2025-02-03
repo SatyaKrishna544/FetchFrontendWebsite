@@ -1,3 +1,5 @@
+import { Dimensions } from "react-native";
+
 export const PAGE_SIZE = 15;
 export const PAGE_DISPLAY_LIMIT = 5;
 
@@ -25,3 +27,7 @@ export const AGE_RANGES = [
 ];
 
 export const DEFAULT_SORT = "breed:asc";
+export const SCREEN_WIDTH = Dimensions.get('window').width;
+export const CARD_MARGIN = 8;
+export const CARDS_PER_ROW = 5;
+export const CARD_WIDTH = (SCREEN_WIDTH - 40 - (CARDS_PER_ROW * CARD_MARGIN * 2)) / CARDS_PER_ROW;
