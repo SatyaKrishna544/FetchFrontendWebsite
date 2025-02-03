@@ -5,6 +5,10 @@ import { useRouter } from "expo-router";
 import { fetchDogDetails, matchDog } from "./api";
 import { Dog } from "./types";
 import { Card, Button } from "react-native-paper";
+import { MaterialIcons } from "@expo/vector-icons"; // Import icons
+
+const PAGE_SIZE = 15; // Define how many favorites per page
+
 
 export default function FavoritesPage() {
   const router = useRouter();
@@ -67,9 +71,11 @@ export default function FavoritesPage() {
     }
   };
 
-  const indexOfLastDog = currentPage * dogsPerPage;
-  const indexOfFirstDog = indexOfLastDog - dogsPerPage;
+  const totalPages = Math.ceil(favoriteDogs.length / PAGE_SIZE);
+  const indexOfLastDog = currentPage * PAGE_SIZE;
+  const indexOfFirstDog = indexOfLastDog - PAGE_SIZE;
   const currentDogs = favoriteDogs.slice(indexOfFirstDog, indexOfLastDog);
+
 
   return (
     <ScrollView style={styles.container}>
@@ -103,23 +109,41 @@ export default function FavoritesPage() {
         <Text style={styles.noFavoritesText}>No favorite dogs selected.</Text>
       )}
 
+      {/* Pagination with Dots and Arrows */}
       <View style={styles.pagination}>
         <TouchableOpacity
           style={[styles.pageButton, currentPage === 1 && styles.pageButtonDisabled]}
           onPress={() => setCurrentPage(currentPage - 1)}
           disabled={currentPage === 1}
         >
-          <Text style={styles.pageButtonText}>Previous</Text>
+          <MaterialIcons name="chevron-left" size={24} color={currentPage === 1 ? "#ccc" : "#000"} />
         </TouchableOpacity>
 
-        <Text style={styles.pageText}>Page {currentPage}</Text>
+        {Array.from({ length: totalPages }).map((_, index) => {
+          const pageNum = index + 1;
+          const isCurrent = pageNum === currentPage;
+          const showPage =
+            pageNum <= 3 || pageNum === totalPages || Math.abs(pageNum - currentPage) <= 1;
+
+          if (!showPage) return null;
+
+          return (
+            <TouchableOpacity
+              key={index}
+              style={[styles.pageNumber, isCurrent && styles.currentPage]}
+              onPress={() => setCurrentPage(pageNum)}
+            >
+              <Text style={styles.pageNumberText}>{pageNum}</Text>
+            </TouchableOpacity>
+          );
+        })}
 
         <TouchableOpacity
-          style={[styles.pageButton, indexOfLastDog >= favoriteDogs.length && styles.pageButtonDisabled]}
+          style={[styles.pageButton, currentPage >= totalPages && styles.pageButtonDisabled]}
           onPress={() => setCurrentPage(currentPage + 1)}
-          disabled={indexOfLastDog >= favoriteDogs.length}
+          disabled={currentPage >= totalPages}
         >
-          <Text style={styles.pageButtonText}>Next</Text>
+          <MaterialIcons name="chevron-right" size={24} color={currentPage >= totalPages ? "#ccc" : "#000"} />
         </TouchableOpacity>
       </View>
 
@@ -136,7 +160,7 @@ export default function FavoritesPage() {
                 <Image source={{ uri: matchedDog.img }} style={styles.dogImage} />
                 <Text style={styles.dogName}>{matchedDog.name} - {matchedDog.breed}</Text>
                 <Text style={styles.dogInfo}>Age: {matchedDog.age} years</Text>
-                <Text style={styles.dogInfo}>Location: {matchedDog.zip_code}</Text>
+                <Text style={styles.dogInfo}>Zip: {matchedDog.zip_code}</Text>
               </>
             )}
             <Button onPress={() => setModalVisible(false)} style={styles.modalButton}>
@@ -281,5 +305,19 @@ const styles = StyleSheet.create({
   },
   loading: {
     marginTop: 20,
+  },
+  pageNumber: { 
+    padding: 8, 
+    marginHorizontal: 3, 
+    borderRadius: 5, 
+    backgroundColor: "#ddd" 
+  },
+  currentPage: { 
+    backgroundColor: "#007AFF" 
+  },
+  pageNumberText: { 
+    fontSize: 16, 
+    fontWeight: "bold", 
+    color: "#fff" 
   },
 });

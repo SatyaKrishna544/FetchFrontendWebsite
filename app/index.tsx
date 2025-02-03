@@ -8,6 +8,9 @@ import { Dog } from "./types";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScrollView } from "react-native-gesture-handler";
 import { useFocusEffect } from "expo-router";
+import { MaterialIcons } from "@expo/vector-icons"; // For arrows/icons
+
+const PAGE_DISPLAY_LIMIT = 5; // Number of visible pages in pagination
 
 const SORT_BY_NAME = [
   { label: "Name (A-Z)", value: "name:asc" },
@@ -77,24 +80,6 @@ export default function IndexPage() {
       router.replace("/login"); // Ensure immediate redirection if not authenticated
     }
   }, [isAuthenticated]);
-
-  // useEffect(() => {
-  //   const initializeData = async () => {
-  //     try {
-  //       setIsLoading(true);
-  //       const breedList = await fetchBreeds("");
-  //       setBreeds(["all", ...breedList]);
-  //       await performSearch("", 0, DEFAULT_SORT);
-  //     } catch (error) {
-  //       Alert.alert("Error", "Failed to load initial data.");
-  //     } finally {
-  //       setIsLoading(false);
-  //     }
-  //   };
-  //   if (isAuthenticated) {
-  //     initializeData();
-  //   }
-  // }, [isAuthenticated]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -360,24 +345,41 @@ export default function IndexPage() {
 
           {/* Pagination */}
           <View style={styles.pagination}>
+            {/* Left Arrow */}
             <TouchableOpacity
               style={[styles.pageButton, currentPage === 0 && styles.pageButtonDisabled]}
               onPress={() => performSearch(selectedBreed, (currentPage - 1) * PAGE_SIZE, sortOption)}
               disabled={currentPage === 0}
             >
-              <Text style={styles.pageButtonText}>Previous</Text>
+              <MaterialIcons name="chevron-left" size={24} color={currentPage === 0 ? "#ccc" : "#000"} />
             </TouchableOpacity>
 
-            <Text style={styles.pageText}>
-              Page {currentPage + 1} of {totalPages}
-            </Text>
+            {/* Page Dots */}
+            {Array.from({ length: totalPages }).map((_, index) => {
+              const isCurrent = index === currentPage;
+              const showPage =
+                index < PAGE_DISPLAY_LIMIT || index === totalPages - 1 || Math.abs(index - currentPage) <= 1; // Show first, last, and nearby pages
 
+              if (!showPage) return null;
+
+              return (
+                <TouchableOpacity
+                  key={index}
+                  style={[styles.pageNumber, isCurrent && styles.currentPage]}
+                  onPress={() => performSearch(selectedBreed, index * PAGE_SIZE, sortOption)}
+                >
+                  <Text style={styles.pageNumberText}>{index + 1}</Text>
+                </TouchableOpacity>
+              );
+            })}
+
+            {/* Right Arrow */}
             <TouchableOpacity
               style={[styles.pageButton, currentPage >= totalPages - 1 && styles.pageButtonDisabled]}
               onPress={() => performSearch(selectedBreed, (currentPage + 1) * PAGE_SIZE, sortOption)}
               disabled={currentPage >= totalPages - 1}
             >
-              <Text style={styles.pageButtonText}>Next</Text>
+              <MaterialIcons name="chevron-right" size={24} color={currentPage >= totalPages - 1 ? "#ccc" : "#000"} />
             </TouchableOpacity>
           </View>
         </>
@@ -484,22 +486,6 @@ const styles = StyleSheet.create({
   },
   favoriteToggleTextActive: {
     color: '#FF3B70',
-  },
-  pagination: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 16,
-    gap: 12,
-  },
-  pageButton: {
-    backgroundColor: '#0066CC',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 4,
-  },
-  pageButtonDisabled: {
-    backgroundColor: '#ccc',
   },
   pageButtonText: {
     color: 'white',
@@ -609,5 +595,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "bold",
   },
-
+  pagination: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 10,
+  },
+  pageButton: {
+    padding: 10,
+    borderRadius: 5,
+    marginHorizontal: 5,
+    backgroundColor: "#007AFF",
+  },
+  pageButtonDisabled: {
+    backgroundColor: "#ccc",
+  },
+  pageNumber: {
+    padding: 8,
+    marginHorizontal: 3,
+    borderRadius: 5,
+    backgroundColor: "#ddd",
+  },
+  currentPage: {
+    backgroundColor: "#007AFF",
+  },
+  pageNumberText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#fff",
+  },
 });
