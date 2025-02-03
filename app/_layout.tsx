@@ -1,49 +1,54 @@
-import React from 'react';
-import { Stack } from 'expo-router';
-import { AuthProvider } from './providers/auth';
-import { StatusBar } from 'react-native';
+import { Slot, Stack, useRouter, useSegments } from 'expo-router';
+import { AuthProvider, useAuth } from './providers/auth';
+import { useEffect } from 'react';
+
+function RootLayoutNav() {
+  const segments = useSegments();
+  const router = useRouter();
+  const { isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    const inAuthGroup = segments[0] === "(auth)";
+
+    if (!isAuthenticated) {
+      // If not authenticated, redirect to login unless already on login page
+      if (!inAuthGroup) {
+        router.replace("/(auth)/login");
+      }
+    } else if (inAuthGroup) {
+      // If authenticated and on login page, redirect to home
+      router.replace("/");
+    }
+  }, [isAuthenticated]);
+
+  return (
+    <Stack>
+      <Stack.Screen
+        name="(auth)"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="index"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="favorites"
+        options={{
+          headerShown: false,
+        }}
+      />
+    </Stack>
+  );
+}
 
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <StatusBar barStyle="dark-content" backgroundColor="#FAF3E0" />
-      <Stack screenOptions={{
-        headerShown: false,
-        contentStyle: {
-          backgroundColor: '#FAF3E0',
-        },
-      }}>
-        <Stack.Screen
-          name="index"
-          options={{
-            title: 'Home',
-          }}
-        />
-        <Stack.Screen
-          name="login"
-          options={{
-            title: 'Login',
-            // Prevent going back to login after logging in
-            headerBackVisible: false,
-            gestureEnabled: false,
-          }}
-        />
-        <Stack.Screen
-          name="favorites"
-          options={{
-            title: 'Favorites',
-            // Show header for favorites page
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: '#FAF3E0',
-            },
-            headerTintColor: '#6A4C93',
-            headerTitleStyle: {
-              fontWeight: 'bold',
-            },
-          }}
-        />
-      </Stack>
+      <RootLayoutNav />
     </AuthProvider>
   );
 }

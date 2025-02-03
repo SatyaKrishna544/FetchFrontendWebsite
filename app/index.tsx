@@ -13,63 +13,33 @@ import { fetchBreeds } from './api';
 import { Dog } from './types';
 
 export default function IndexPage() {
-  const { isAuthenticated, logout } = useAuth();
-  const router = useRouter();
+    const { isAuthenticated, logout } = useAuth();
+    const router = useRouter();
+    
+    const {
+      breeds,
+      selectedBreed,
+      setSelectedBreed,
+      dogs,
+      isLoading,
+      currentPage,
+      totalDogs,
+      sortOption,
+      setSortOption,
+      ageRange,
+      setAgeRange,
+      performSearch
+    } = useDogSearch();
   
-  const {
-    breeds,
-    setBreeds,
-    selectedBreed,
-    setSelectedBreed,
-    dogs,
-    isLoading,
-    setIsLoading,
-    currentPage,
-    totalDogs,
-    sortOption,
-    setSortOption,
-    ageRange,
-    setAgeRange,
-    performSearch
-  } = useDogSearch();
-
-  const { favorites, toggleFavorite } = useFavorites();
-
-  // Initial data loading
-  useEffect(() => {
-    const initializeData = async () => {
-      try {
-        setIsLoading(true);
-        const breedList = await fetchBreeds();
-        
-        if (!breedList || breedList.length === 0) {
-          throw new Error("Failed to fetch breeds");
-        }
-
-        setBreeds(["all", ...breedList]);
-        await performSearch("all", 0, "breed:asc");
-      } catch (error) {
-        console.error("Failed to initialize data:", error);
-        await logout();
-        router.replace("/login");
-      } finally {
-        setIsLoading(false);
+    const { favorites, toggleFavorite } = useFavorites();
+  
+    // Initial search when breeds are loaded
+    useEffect(() => {
+      if (breeds.length > 0) {
+        performSearch(selectedBreed, 0, sortOption);
       }
-    };
-
-    if (isAuthenticated) {
-      initializeData();
-    } else {
-      router.replace("/login");
-    }
-  }, [isAuthenticated]);
-
-  // Authentication check
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.replace("/login");
-    }
-  }, [isAuthenticated]);
+    }, [breeds]); // Only depend on breeds array
+  
 
   const handleLogout = async () => {
     await logout();
@@ -102,9 +72,9 @@ export default function IndexPage() {
           setSelectedBreed(value);
           performSearch(value, 0, sortOption);
         }}
-        onSortChange={(value) => {
-          setSortOption(value);
-          performSearch(selectedBreed, 0, value);
+        onSortChange={(type, value) => {
+            setSortOption(value);
+            performSearch(selectedBreed, 0, value);
         }}
         onAgeChange={(value) => {
           setAgeRange(value);

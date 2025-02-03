@@ -11,7 +11,7 @@ interface FilterControlsProps {
   ageRange: string;
   favoritesCount: number;
   onBreedChange: (value: string) => void;
-  onSortChange: (value: string) => void;
+  onSortChange: (type: 'name' | 'breed' | 'zip', value: string) => void; // Modified
   onAgeChange: (value: string) => void;
   onSearch: () => void;
 }
@@ -54,8 +54,8 @@ export const FilterControls: React.FC<FilterControlsProps> = ({
         <View style={styles.pickerContainer}>
           <Text style={styles.filterLabel}>Sort by Name:</Text>
           <Picker
-            selectedValue={sortOption}
-            onValueChange={onSortChange}
+            selectedValue={sortOption.startsWith('name:') ? sortOption : 'name:asc'}
+            onValueChange={(value) => onSortChange('name', value)}
             style={styles.compactPicker}
           >
             {SORT_BY_NAME.map((option) => (
@@ -68,8 +68,8 @@ export const FilterControls: React.FC<FilterControlsProps> = ({
         <View style={styles.pickerContainer}>
           <Text style={styles.filterLabel}>Sort by Breed:</Text>
           <Picker
-            selectedValue={sortOption}
-            onValueChange={onSortChange}
+            selectedValue={sortOption.startsWith('breed:') ? sortOption : 'breed:asc'}
+            onValueChange={(value) => onSortChange('breed', value)}
             style={styles.compactPicker}
           >
             {SORT_BY_BREED.map((option) => (
@@ -82,8 +82,8 @@ export const FilterControls: React.FC<FilterControlsProps> = ({
         <View style={styles.pickerContainer}>
           <Text style={styles.filterLabel}>Sort by ZIP:</Text>
           <Picker
-            selectedValue={sortOption}
-            onValueChange={onSortChange}
+            selectedValue={sortOption.startsWith('zip_code:') ? sortOption : 'zip_code:asc'}
+            onValueChange={(value) => onSortChange('zip', value)}
             style={styles.compactPicker}
           >
             {SORT_BY_ZIP.map((option) => (
@@ -120,7 +120,7 @@ export const FilterControls: React.FC<FilterControlsProps> = ({
 
         <TouchableOpacity
           style={[styles.button, styles.favoriteButton]}
-          onPress={() => router.push("/favorites")}
+          onPress={() => router.replace("/favorites")}
         >
           <Text style={styles.buttonText}>
             View Favorites ({favoritesCount})

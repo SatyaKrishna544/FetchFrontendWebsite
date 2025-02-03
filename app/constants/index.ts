@@ -14,8 +14,8 @@ export const SORT_BY_BREED = [
 ];
 
 export const SORT_BY_ZIP = [
-  { label: "ZIP Code (0-9)", value: "zip:asc" },
-  { label: "ZIP Code (9-0)", value: "zip:desc" },
+  { label: "ZIP Code (0-9)", value: "zip_code:asc" },
+  { label: "ZIP Code (9-0)", value: "zip_code:desc" },
 ];
 
 export const AGE_RANGES = [

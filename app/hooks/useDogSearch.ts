@@ -1,7 +1,7 @@
-// 📁 app/hooks/useDogSearch.ts
-import { useState, useEffect } from 'react';
+// In app/hooks/useDogSearch.ts
+import { useState, useEffect, useCallback } from 'react';
 import { Alert } from 'react-native';
-import { searchDogs, fetchDogDetails } from '../api';
+import { fetchBreeds, searchDogs, fetchDogDetails } from '../api';
 import { Dog } from '../types';
 import { PAGE_SIZE } from '../constants';
 
@@ -15,6 +15,7 @@ export const useDogSearch = () => {
   const [sortOption, setSortOption] = useState("breed:asc");
   const [ageRange, setAgeRange] = useState<string>("all");
 
+  // Add the filterByAge function
   const filterByAge = (dogs: Dog[], range: string) => {
     if (range === "all") return dogs;
     
@@ -26,11 +27,23 @@ export const useDogSearch = () => {
     });
   };
 
-  const performSearch = async (breed: string, from: number, sort: string) => {
+  const loadBreeds = async () => {
+    try {
+      const breedList = await fetchBreeds();
+      if (breedList.length > 0) {
+        setBreeds(["all", ...breedList]);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error loading breeds:", error);
+      return false;
+    }
+  };
+
+  const performSearch = useCallback(async (breed: string, from: number, sort: string) => {
     try {
       setIsLoading(true);
-      console.log('Performing search:', { breed, from, sort });
-      
       const searchResult = await searchDogs({
         breed: breed === "all" ? "" : breed,
         size: PAGE_SIZE,
@@ -38,15 +51,9 @@ export const useDogSearch = () => {
         from: from.toString()
       });
       
-      console.log('Search result:', searchResult);
-
       if (searchResult?.resultIds) {
         const dogDetails = await fetchDogDetails(searchResult.resultIds);
-        console.log('Dog details:', dogDetails);
-        
         const filteredDogs = filterByAge(dogDetails || [], ageRange);
-        console.log('Filtered dogs:', filteredDogs);
-        
         setDogs(filteredDogs);
         setTotalDogs(searchResult.total);
         setCurrentPage(Math.floor(from / PAGE_SIZE));
@@ -57,16 +64,19 @@ export const useDogSearch = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [ageRange]);
+
+  // Initial load - only load breeds
+  useEffect(() => {
+    loadBreeds();
+  }, []);
 
   return {
     breeds,
-    setBreeds,
     selectedBreed,
     setSelectedBreed,
     dogs,
     isLoading,
-    setIsLoading,
     currentPage,
     totalDogs,
     sortOption,
@@ -74,5 +84,6 @@ export const useDogSearch = () => {
     ageRange,
     setAgeRange,
     performSearch,
+    loadBreeds
   };
 };

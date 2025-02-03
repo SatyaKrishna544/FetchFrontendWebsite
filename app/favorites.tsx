@@ -1,6 +1,5 @@
-// 📁 app/favorites.tsx
-import React, { useState, useEffect } from 'react';
-import { ScrollView, View, ActivityIndicator, StyleSheet, Modal, Dimensions, Alert } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { ScrollView, View, ActivityIndicator, StyleSheet, Modal, Dimensions, Alert, TouchableOpacity } from 'react-native';
 import { Text, Button, Card } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { Header } from './components/Header';
@@ -10,12 +9,8 @@ import { fetchDogDetails, matchDog } from './api';
 import { Dog } from './types';
 import { useFavorites } from './hooks/useFavorites';
 import { DogCard } from './components/DogCard';
-
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const CARD_MARGIN = 8;
-const CARDS_PER_ROW = 5;
-const PAGE_SIZE = 15;
-const CARD_WIDTH = (SCREEN_WIDTH - 40 - (CARDS_PER_ROW * CARD_MARGIN * 2)) / CARDS_PER_ROW;
+import { CARD_MARGIN, CARD_WIDTH, PAGE_SIZE } from './constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function FavoritesPage() {
   const [favoriteDogs, setFavoriteDogs] = useState<Dog[]>([]);
@@ -27,10 +22,13 @@ export default function FavoritesPage() {
   const { loadFavorites, toggleFavorite } = useFavorites();
   const router = useRouter();
 
+
   const loadFavoriteDogs = async () => {
     try {
       setIsLoading(true);
-      const favoriteIds = await loadFavorites();
+      const storedFavorites = await AsyncStorage.getItem("favorites");
+      const favoriteIds = storedFavorites ? JSON.parse(storedFavorites) : [];
+      
       if (favoriteIds.length > 0) {
         const dogs = await fetchDogDetails(favoriteIds);
         setFavoriteDogs(dogs || []);
@@ -43,14 +41,11 @@ export default function FavoritesPage() {
       setIsLoading(false);
     }
   };
-
+  
+  // Simplify the useEffect to only load data
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.replace("/login");
-      return;
-    }
     loadFavoriteDogs();
-  }, [isAuthenticated]);
+  }, []); 
 
   const handleToggleFavorite = async (dogId: string): Promise<void> => {
     await toggleFavorite(dogId);
@@ -105,6 +100,14 @@ export default function FavoritesPage() {
           Total Favorites ({favoriteDogs.length})
         </Button>
         
+        <View style={styles.navigationButtons}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.replace("/")}
+        >
+          <Text style={styles.backButtonText}>← Back to Home</Text>
+        </TouchableOpacity>
+        
         <Button
           mode="contained"
           onPress={handleMatch}
@@ -113,6 +116,7 @@ export default function FavoritesPage() {
         >
           Find a Match
         </Button>
+      </View>
       </View>
       
       {isLoading ? (
@@ -318,5 +322,25 @@ const styles = StyleSheet.create({
   closeButton: {
     marginTop: 16,
     backgroundColor: '#6A4C93',
+  },
+  navigationButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    gap: 12,
+  },
+  backButton: {
+    backgroundColor: '#6A4C93',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });

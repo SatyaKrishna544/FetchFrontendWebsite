@@ -13,15 +13,6 @@ export default function LoginScreen() {
   const [nameError, setNameError] = useState("");
   const [emailError, setEmailError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const fadeAnim = new Animated.Value(0);
-
-  useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 1000,
-      useNativeDriver: true,
-    }).start();
-  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -84,7 +75,7 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
+      <Animated.View style={[styles.header]}>
         <Image
           source={{
             uri: "https://images.unsplash.com/photo-1560807707-8cc77767d783",
