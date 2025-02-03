@@ -1,150 +1,172 @@
-import { Dog, Match } from "./types";
-import { Location, Coordinates } from "./types";
+import { Dog, SearchFilters, SearchResponse, LoginResponse, MatchResponse } from "./types";
 
 const API_BASE = "https://frontend-take-home-service.fetch.com";
 
-// Function to log in a user
-export const loginUser = async (name: string, email: string) => {
+/**
+ * Custom error class for API errors
+ */
+export class ApiError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+/**
+ * Helper function to handle API responses
+ */
+async function handleResponse<T>(response: Response): Promise<T> {
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      `API Error: ${response.status} ${response.statusText}`
+    );
+  }
+
+  // Some endpoints don't return JSON
+  if (response.headers.get('content-type')?.includes('application/json')) {
+    return response.json();
+  }
+  
+  return {} as T;
+}
+
+/**
+ * Login user
+ */
+export async function loginUser(name: string, email: string): Promise<LoginResponse> {
   try {
-    const response = await fetch("https://frontend-take-home-service.fetch.com/auth/login", {
+    const response = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, email }),
-      credentials: "include", // Include credentials for cookie-based auth
+      credentials: "include",
     });
 
-    // Check if the response is ok (200-299 range)
     if (response.ok) {
-      // If successful, we don't expect a JSON response, just a cookie being set
-      console.log("Login successful, cookies set");
-      return { success: true }; // Indicate successful login
+      // Return a success object even if the response is empty
+      return { success: true };
     } else {
-      throw new Error("Login failed: " + response.statusText);
+      throw new Error(`Login failed: ${response.statusText}`);
     }
   } catch (error) {
     console.error("Login error:", error);
-    return null;
+    throw error;
   }
-};
+}
 
-
-// Function to log out the user
-export const logoutUser = async () => {
+/**
+ * Logout user
+ */
+export async function logoutUser(): Promise<void> {
   try {
     const response = await fetch(`${API_BASE}/auth/logout`, {
       method: "POST",
-      credentials: "include", // Ensures session cookies are cleared
+      credentials: "include",
     });
 
-    if (!response.ok) throw new Error("Logout failed");
+    await handleResponse<void>(response);
   } catch (error) {
     console.error("Logout error:", error);
+    throw error instanceof ApiError ? error : new Error('Logout failed');
   }
-};
+}
 
-// Fetch available dog breeds
-export const fetchBreeds = async (token: string) => {
+/**
+ * Fetch available dog breeds
+ */
+export async function fetchBreeds(): Promise<string[]> {
   try {
     const response = await fetch(`${API_BASE}/dogs/breeds`, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials:"include",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
     });
 
-    if (!response.ok) throw new Error("Failed to fetch breeds");
-
-    return response.json();
+    return handleResponse<string[]>(response);
   } catch (error) {
     console.error("Error fetching breeds:", error);
-    return [];
+    throw error instanceof ApiError ? error : new Error('Failed to fetch breeds');
   }
-};
+}
 
-// Fetch dog search results based on filters
-export const searchDogs = async (
-  token: string,
-  filters: { breed?: string; size?: number; sort?: string; from?: string }
-) => {
+/**
+ * Search dogs with filters
+ */
+export async function searchDogs(filters: SearchFilters): Promise<SearchResponse> {
   try {
-    let query = `size=${filters.size || 10}&sort=${filters.sort || "breed:asc"}`;
-    if (filters.breed) query += `&breeds=${filters.breed}`;
-    if (filters.from) query += `&from=${filters.from}`;
-
-    const response = await fetch(`${API_BASE}/dogs/search?${query}`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      credentials:"include",
+    const queryParams = new URLSearchParams({
+      size: (filters.size || 10).toString(),
+      sort: filters.sort || "breed:asc",
+      ...(filters.breed && { breeds: filters.breed }),
+      ...(filters.from && { from: filters.from }),
     });
 
-    if (!response.ok) throw new Error("Failed to search dogs");
+    const response = await fetch(`${API_BASE}/dogs/search?${queryParams}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
 
-    return response.json();
+    return handleResponse<SearchResponse>(response);
   } catch (error) {
     console.error("Error searching dogs:", error);
-    return null;
+    throw error instanceof ApiError ? error : new Error('Failed to search dogs');
   }
-};
+}
 
-// Fetch details of specific dogs by IDs
-export const fetchDogDetails = async (token: string, dogIds: string[]) => {
+/**
+ * Fetch details for specific dogs
+ */
+export async function fetchDogDetails(dogIds: string[]): Promise<Dog[]> {
   try {
     const response = await fetch(`${API_BASE}/dogs`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      credentials:"include",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify(dogIds),
     });
 
-    if (!response.ok) throw new Error("Failed to fetch dog details");
-
-    return response.json();
+    return handleResponse<Dog[]>(response);
   } catch (error) {
     console.error("Error fetching dog details:", error);
-    return [];
+    throw error instanceof ApiError ? error : new Error('Failed to fetch dog details');
   }
-};
+}
 
-// Match favorite dogs and get a single matched dog ID
-export const matchDog = async (token: string, favoriteDogIds: string[]) => {
+/**
+ * Match dogs from favorites
+ */
+export async function matchDog(favoriteDogIds: string[]): Promise<MatchResponse> {
   try {
     const response = await fetch(`${API_BASE}/dogs/match`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      credentials:"include",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify(favoriteDogIds),
     });
 
-    if (!response.ok) throw new Error("Failed to find match");
-
-    return response.json();
+    return handleResponse<MatchResponse>(response);
   } catch (error) {
     console.error("Error matching dog:", error);
-    return null;
+    throw error instanceof ApiError ? error : new Error('Failed to find match');
   }
-};
+}
 
-// Check if the user is authenticated by calling a protected endpoint
-export const checkAuthStatus = async (): Promise<boolean> => {
+/**
+ * Check authentication status
+ */
+export async function checkAuthStatus(): Promise<boolean> {
   try {
     const response = await fetch(`${API_BASE}/dogs/breeds`, {
       method: "GET",
-      credentials: "include", // Sends cookies for authentication check
+      credentials: "include",
     });
 
-    return response.ok; // If response is OK, user is logged in
+    await handleResponse<void>(response);
+    return true;
   } catch (error) {
     console.error("Auth check error:", error);
     return false;
   }
-};
+}

@@ -1,32 +1,32 @@
-export interface SearchResponse {
-  resultIds: string[];
-  total: number;
-  next?: string;
-}
-
+// 📁 app/types.ts
 export interface Dog {
   id: string;
   img: string;
   name: string;
-  breed: string;
   age: number;
   zip_code: string;
+  breed: string;
 }
 
-export interface Match {
-  match: string
+export interface SearchFilters {
+  breed?: string;
+  size?: number;
+  sort?: string;
+  from?: string;
 }
 
-export interface Location {
-  zip_code: string
-  latitude: number
-  longitude: number
-  city: string
-  state: string
-  county: string
+export interface SearchResponse {
+  resultIds: string[];
+  total: number;
+  next: string;
+  prev: string | null;
 }
 
-export interface Coordinates {
-  lat: number;
-  lon: number;
+export interface LoginResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface MatchResponse {
+  match: string;
 }

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { loginUser, logoutUser, checkAuthStatus } from "./api"; // New function to check auth status
+import { loginUser, logoutUser, checkAuthStatus } from "../api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface AuthContextType {
@@ -13,7 +13,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Check authentication status on app start
   useEffect(() => {
     const verifyAuth = async () => {
       const loggedIn = await checkAuthStatus();
@@ -25,13 +24,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (name: string, email: string): Promise<boolean> => {
     try {
       const response = await loginUser(name, email);
-      if (response && response.success) {
-        setIsAuthenticated(true);
-        return true;
-      }
-      return false;
+      // Check if the response has the success property
+      const success = response && response.success;
+      setIsAuthenticated(success);
+      return success;
     } catch (error) {
       console.error("Login error:", error);
+      setIsAuthenticated(false);
       return false;
     }
   };
@@ -39,7 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async (): Promise<void> => {
     try {
       await logoutUser();
-      setIsAuthenticated(false); // Update state
+      setIsAuthenticated(false);
       await AsyncStorage.removeItem("favorites");
       await AsyncStorage.removeItem("userData");
     } catch (error) {
@@ -47,13 +46,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const value = {
-    login,
-    logout,
-    isAuthenticated,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ login, logout, isAuthenticated }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
