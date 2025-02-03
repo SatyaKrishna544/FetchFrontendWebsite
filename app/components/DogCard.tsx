@@ -1,4 +1,3 @@
-// 📁 app/components/DogCard.tsx
 import React, { useState } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
 import { Card, Text, Button, IconButton } from 'react-native-paper';
@@ -10,7 +9,7 @@ interface DogCardProps {
   isFavorite: boolean;
   onToggleFavorite: (dogId: string) => void;
   cardWidth: number;
-  showRemoveButton?: boolean; // New prop to control button visibility
+  showRemoveButton?: boolean;
 }
 
 export const DogCard: React.FC<DogCardProps> = ({
@@ -18,13 +17,12 @@ export const DogCard: React.FC<DogCardProps> = ({
   isFavorite,
   onToggleFavorite,
   cardWidth,
-  showRemoveButton = false, // Default to false for home page
+  showRemoveButton = false, 
 }) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [scaleAnim] = useState(new Animated.Value(1));
 
   const handleFavoritePress = () => {
-    // Animate heart icon when pressed
     Animated.sequence([
       Animated.timing(scaleAnim, {
         toValue: 1.3,
@@ -61,7 +59,7 @@ export const DogCard: React.FC<DogCardProps> = ({
               onPress={() => setIsModalVisible(true)}
               style={styles.viewButton}
               labelStyle={styles.viewButtonLabel}
-              compact={true} // Make the button smaller
+              compact={true} 
             >
               View Details
             </Button>

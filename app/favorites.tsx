@@ -78,7 +78,7 @@ export default function FavoritesPage() {
     }
   };
 
-  const goToHome = () => router.push("/");
+  const goToHome = () => router.replace("/");
 
   // Calculate pagination
   const totalPages = Math.ceil(favoriteDogs.length / PAGE_SIZE);
