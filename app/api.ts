@@ -134,46 +134,17 @@ export const matchDog = async (token: string, favoriteDogIds: string[]) => {
   }
 };
 
-// Fetch location details for given ZIP codes
-export async function fetchLocationsByZip(token: string, zipCodes: string[]): Promise<Location[]> {
-  const response = await fetch(`${API_BASE}/locations`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(zipCodes),
-  });
-  if (!response.ok) throw new Error("Failed to fetch locations");
-  return response.json();
-}
+// Check if the user is authenticated by calling a protected endpoint
+export const checkAuthStatus = async (): Promise<boolean> => {
+  try {
+    const response = await fetch(`${API_BASE}/dogs/breeds`, {
+      method: "GET",
+      credentials: "include", // Sends cookies for authentication check
+    });
 
-// Search locations by city, state, or geographic bounding box
-export async function searchLocations(
-  token: string,
-  city?: string,
-  states?: string[],
-  geoBoundingBox?: {
-    top?: Coordinates;
-    left?: Coordinates;
-    bottom?: Coordinates;
-    right?: Coordinates;
-    bottom_left?: Coordinates;
-    top_left?: Coordinates;
-    bottom_right?: Coordinates;
-    top_right?: Coordinates;
-  },
-  size: number = 25,
-  from?: number
-): Promise<{ results: Location[]; total: number }> {
-  const response = await fetch(`${API_BASE}/locations/search`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ city, states, geoBoundingBox, size, from }),
-  });
-  if (!response.ok) throw new Error("Failed to search locations");
-  return response.json();
-}
+    return response.ok; // If response is OK, user is logged in
+  } catch (error) {
+    console.error("Auth check error:", error);
+    return false;
+  }
+};

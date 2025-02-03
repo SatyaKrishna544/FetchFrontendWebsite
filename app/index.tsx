@@ -40,7 +40,7 @@ const CARDS_PER_ROW = 5; // Updated to 5 cards per row
 const CARD_WIDTH = (SCREEN_WIDTH - 40 - (CARDS_PER_ROW * CARD_MARGIN * 2)) / CARDS_PER_ROW;
 
 export default function IndexPage() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, logout } = useAuth();
   const router = useRouter();
 
   const [breeds, setBreeds] = useState<string[]>([]);
@@ -54,22 +54,51 @@ export default function IndexPage() {
   const [showFavoriteMessage, setShowFavoriteMessage] = useState<string | null>(null);
   const [ageRange, setAgeRange] = useState<string>("all");
 
-
+  // 🔹 Check authentication by calling /dogs/breeds
   useEffect(() => {
-    const initializeData = async () => {
+    const checkAuthStatus = async () => {
       try {
         setIsLoading(true);
-        const breedList = await fetchBreeds("");
+        const breedList = await fetchBreeds(""); // Attempt to fetch breeds
+        if (breedList.length === 0) throw new Error("Unauthorized"); // If empty, assume unauthorized
         setBreeds(["all", ...breedList]);
         await performSearch("", 0, DEFAULT_SORT);
       } catch (error) {
-        Alert.alert("Error", "Failed to load initial data.");
+        console.error("Auth check failed, logging out:", error);
+        await logout(); // Log out the user
+        router.replace("/login"); // Redirect to login
       } finally {
         setIsLoading(false);
       }
     };
     if (isAuthenticated) {
-      initializeData();
+      checkAuthStatus();
+    } else {
+      router.replace("/login"); // Ensure immediate redirection if not authenticated
+    }
+  }, [isAuthenticated]);
+
+  // useEffect(() => {
+  //   const initializeData = async () => {
+  //     try {
+  //       setIsLoading(true);
+  //       const breedList = await fetchBreeds("");
+  //       setBreeds(["all", ...breedList]);
+  //       await performSearch("", 0, DEFAULT_SORT);
+  //     } catch (error) {
+  //       Alert.alert("Error", "Failed to load initial data.");
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   };
+  //   if (isAuthenticated) {
+  //     initializeData();
+  //   }
+  // }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace("/login");
     }
   }, [isAuthenticated]);
 
@@ -152,8 +181,19 @@ export default function IndexPage() {
     });
   };
 
+  const handleLogout = async () => {
+    await logout(); // Clear authentication state
+    router.replace("/login"); // Redirect to login page
+  };
+
   return (
     <ScrollView style={styles.container}>
+      {/* Top Navigation Bar with Logout Button */}
+      <View style={styles.topBar}>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutText}>← Logout</Text>
+        </TouchableOpacity>
+      </View>
       {/* Cute Dog Header */}
       <View style={styles.header}>
         <Text style={styles.title}>🐶 Welcome to Happy Tails!</Text>
@@ -551,6 +591,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     textAlign: "center",
+  },
+  topBar: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+  },
+  logoutButton: {
+    backgroundColor: "#FF5A5F",
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+  },
+  logoutText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "bold",
   },
 
 });
